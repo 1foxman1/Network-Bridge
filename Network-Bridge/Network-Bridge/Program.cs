@@ -74,42 +74,42 @@ namespace Network_Bridge
         private static void PacketHandler(Packet packet)
         {
             //Console.WriteLine(packet.Timestamp.ToString("yyyy-MM-dd hh:mm:ss.fff") + " length:" + packet.Length + "IP:" + packet.IpV4);
-
-            CheckAddress(packet);
+            if (packet.Ethernet.Arp != null)
+            {
+                CheckAddress(packet);
+            }
         }
 
         private static void CheckAddress(Packet packet)
         {
-            if (packet.Ethernet.Arp != null)
+            
+            int threadID = System.Threading.Thread.CurrentThread.ManagedThreadId; //fetch current thread ID
+            string mac = packet.Ethernet.Source.ToString();
+            Console.WriteLine("Device:" + threadID);
+
+            foreach (MyDevice device in myDevices) //checks if it's a new device or if a mac should be added
             {
-                int threadID = System.Threading.Thread.CurrentThread.ManagedThreadId; //fetch current thread ID
-                string mac = packet.Ethernet.Source.ToString();
-                Console.WriteLine("Device:" + threadID);
-
-                foreach (MyDevice device in myDevices) //checks if it's a new device or if a mac should be added
+                if (device.ID == -1) //device not in list
                 {
-                    if (device.ID == -1) //device not in list
+                    device.ID = threadID;
+                    device.Addresses.Add(mac);
+                }
+                else
+                {
+                    if (device.ID == threadID) //found device
                     {
-                        device.ID = threadID;
-                        device.Addresses.Add(mac);
-                    }
-                    else
-                    {
-                        if (device.ID == threadID) //found device
+                        bool inList = false;
+                        foreach (string address in device.Addresses)
                         {
-                            bool inList = false;
-                            foreach (string address in device.Addresses)
+                            if (address.Equals(mac))
                             {
-                                if (address.Equals(mac))
-                                {
-                                    inList = true;
-                                }
+                                inList = true;
                             }
+                        }
 
-                            if (!inList)
-                            {
-                                device.Addresses.Add(mac); // if device mac not in list, adds it
-                            }
+                        if (!inList)
+                        {
+                            device.Addresses.Add(mac); // if device mac not in list, adds it
                         }
                     }
                 }
