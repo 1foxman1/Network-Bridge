@@ -1,0 +1,6 @@
+C:\foxman\programing\cyber\Network-Bridge\Network-Bridge\Network-Bridge\bin\Debug\Network-Bridge.exe.config
+C:\foxman\programing\cyber\Network-Bridge\Network-Bridge\Network-Bridge\obj\Debug\Network-Bridge.csprojResolveAssemblyReference.cache
+C:\foxman\programing\cyber\Network-Bridge\Network-Bridge\Network-Bridge\bin\Debug\Network-Bridge.exe
+C:\foxman\programing\cyber\Network-Bridge\Network-Bridge\Network-Bridge\bin\Debug\Network-Bridge.pdb
+C:\foxman\programing\cyber\Network-Bridge\Network-Bridge\Network-Bridge\obj\Debug\Network-Bridge.exe
+C:\foxman\programing\cyber\Network-Bridge\Network-Bridge\Network-Bridge\obj\Debug\Network-Bridge.pdb
