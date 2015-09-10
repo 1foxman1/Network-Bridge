@@ -75,21 +75,25 @@ namespace Network_Bridge
         {
             //Console.WriteLine(packet.Timestamp.ToString("yyyy-MM-dd hh:mm:ss.fff") + " length:" + packet.Length + "IP:" + packet.IpV4);
 
+            CheckAddress(packet);
+        }
 
+        private static void CheckAddress(Packet packet)
+        {
             if (packet.Ethernet.Arp != null)
             {
                 int threadID = System.Threading.Thread.CurrentThread.ManagedThreadId; //fetch current thread ID
                 string mac = packet.Ethernet.Source.ToString();
                 Console.WriteLine("Device:" + threadID);
 
-                foreach(MyDevice device in myDevices) //checks if it's a new device or if a mac should be added
+                foreach (MyDevice device in myDevices) //checks if it's a new device or if a mac should be added
                 {
-                    if(device.ID == -1) //device not in list
+                    if (device.ID == -1) //device not in list
                     {
                         device.ID = threadID;
                         device.Addresses.Add(mac);
                     }
-                    else 
+                    else
                     {
                         if (device.ID == threadID) //found device
                         {
@@ -108,7 +112,7 @@ namespace Network_Bridge
                             }
                         }
                     }
-                }            
+                }
             }
         }
         
