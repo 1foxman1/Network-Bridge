@@ -21,13 +21,16 @@ namespace Network_Bridge
         private PacketDevice device;
         private List<string> addresses;
         private int id;
+        private string macAddress;
+        private string ipAddress;
 
-        public MyDevice(PacketDevice device)
+        public MyDevice(PacketDevice device, string macAddress, int id)
         {
             this.addresses = new List<string>();
             this.device = device;
-            this.id = -1;
-        }
+            this.id = id;
+            this.macAddress = macAddress;
+        } 
 
         public PacketDevice Device
         {
@@ -65,6 +68,19 @@ namespace Network_Bridge
             set
             {
                 this.id = value;
+            }
+        }
+
+        public string MacAddress
+        {
+            get
+            {
+                return this.macAddress;
+            }
+
+            set
+            {
+                this.macAddress = value;
             }
         }
 

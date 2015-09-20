@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using PcapDotNet;
 using PcapDotNet.Base;
 using PcapDotNet.Core;
 using PcapDotNet.Packets;
+using PcapDotNet.Packets.Ethernet;
 using PcapDotNet.Packets.IpV4;
 using PcapDotNet.Packets.Transport;
 using PcapDotNet.Packets.Arp;
@@ -13,6 +15,7 @@ using System.Net;
 using System.IO;
 using System.Net.Mail;
 using System.Threading;
+using SharpPcap;
 
 namespace Network_Bridge
 {
@@ -38,14 +41,51 @@ namespace Network_Bridge
         private static IList<LivePacketDevice> allDevices = LivePacketDevice.AllLocalMachine; // global list of all devices
         private static List<MyDevice> myDevices = new List<MyDevice>();
 
-
         //Capture thread
         public static void CaptureStarter()
         {
             // Take the selected adapter
             PacketDevice selectedDevice = allDevices[deviceNumber];
 
-            myDevices.Add(new MyDevice(selectedDevice));
+            Console.WriteLine("Gal device name: " + selectedDevice.Name);
+            Console.WriteLine("Gal device tostring: " + selectedDevice.ToString());
+            foreach (DeviceAddress addr in selectedDevice.Addresses)
+            {
+                Console.WriteLine("Gal device addr: " +  addr.Address.ToString());
+                if (addr.Destination != null)
+                    Console.WriteLine(addr.Destination.ToString());
+                 }
+
+
+            int threadID = System.Threading.Thread.CurrentThread.ManagedThreadId; //fetch current thread ID
+
+            
+
+            
+
+            CaptureDeviceList devices = CaptureDeviceList.Instance;
+
+            string dName = selectedDevice.Name;
+            dName = dName.Substring(dName.IndexOf('{') + 1, (dName.IndexOf('}') - dName.IndexOf('{') - 1));
+            string dAddress = "";
+            foreach (ICaptureDevice dev in devices)
+            {
+                dev.Open();
+
+                string name = dev.Name;
+                name = name.Substring(name.IndexOf('{') + 1, (name.IndexOf('}') - name.IndexOf('{') - 1));
+                if (dName.Equals(name))
+                {
+                    dAddress = dev.MacAddress.ToString();
+                }
+            }
+
+            MyDevice device = new MyDevice(selectedDevice,dAddress, threadID);
+            myDevices.Add(device);
+
+            Console.WriteLine("Dev ID:" + device.ID);
+            Console.WriteLine("Dev Name:" + device.Device.Name);
+            Console.WriteLine("Dev MAC: " + device.MacAddress);
 
             // Open the device
             using (PacketCommunicator communicator =
@@ -82,41 +122,43 @@ namespace Network_Bridge
 
         private static void CheckAddress(Packet packet)
         {
-            
             int threadID = System.Threading.Thread.CurrentThread.ManagedThreadId; //fetch current thread ID
             string mac = packet.Ethernet.Source.ToString();
-            Console.WriteLine("Device:" + threadID);
 
+            MyDevice md;
             foreach (MyDevice device in myDevices) //checks if it's a new device or if a mac should be added
             {
-                if (device.ID == -1) //device not in list
+                // Console.WriteLine(device.ID);
+                if (device.ID == threadID) //found device
                 {
-                    device.ID = threadID;
-                    device.Addresses.Add(mac);
-                }
-                else
-                {
-                    if (device.ID == threadID) //found device
+                    bool inList = false;
+                    md = device;
+                    foreach (string address in device.Addresses)
                     {
-                        bool inList = false;
-                        foreach (string address in device.Addresses)
+                        if (address.Equals(mac))
                         {
-                            if (address.Equals(mac))
-                            {
-                                inList = true;
-                            }
+                            inList = true;
                         }
+                    }
 
-                        if (!inList)
-                        {
-                            device.Addresses.Add(mac); // if device mac not in list, adds it
-                        }
+                    if (!inList)
+                    {
+                        //Console.WriteLine("Device Address: " + device.Address);
+                        device.Addresses.Add(mac); // if device mac not in list, adds it
+                        Console.WriteLine("Mac address: " + mac + " added from device: " + device.ID);
                     }
                 }
             }
-        }
-        
 
+            //if(md!=null)
+            //{
+            //    var etherPacket = new PacketDotNet.EthernetPacket(md.,mac,);
+            //    var arppacket = new PacketDotNet.ARPPacket(PacketDotNet.ARPOperation.Response, );
+            //    etherPacket.PayloadPacket = arppacket;
+
+            //}
+        }
+     
         static void Main(string[] args)
         {
 
