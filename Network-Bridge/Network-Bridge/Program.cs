@@ -16,6 +16,7 @@ using System.IO;
 using System.Net.Mail;
 using System.Threading;
 using SharpPcap;
+using System.Net.NetworkInformation;
 
 namespace Network_Bridge
 {
@@ -80,7 +81,12 @@ namespace Network_Bridge
                 }
             }
 
-            MyDevice device = new MyDevice(selectedDevice,dAddress, threadID);
+            string deviceIP = selectedDevice.Addresses[1].Address.ToString();
+            deviceIP = deviceIP.Split(' ')[1];
+
+            Console.WriteLine("DEVICE IP: " + deviceIP);
+
+            MyDevice device = new MyDevice(selectedDevice,dAddress, deviceIP , threadID);
             myDevices.Add(device);
 
             Console.WriteLine("Dev ID:" + device.ID);
@@ -116,11 +122,27 @@ namespace Network_Bridge
             //Console.WriteLine(packet.Timestamp.ToString("yyyy-MM-dd hh:mm:ss.fff") + " length:" + packet.Length + "IP:" + packet.IpV4);
             if (packet.Ethernet.Arp != null)
             {
-                CheckAddress(packet);
+                int threadID = System.Threading.Thread.CurrentThread.ManagedThreadId; //fetch current thread ID
+                MyDevice devObj = GetMacDeviceByTreadId(threadID);
+                string SrcMac = CheckAddress(packet);
+                PhysicalAddress pysSrc = PhysicalAddress.Parse(devObj.MacAddress);
+                PhysicalAddress pyDest = PhysicalAddress.Parse(SrcMac);
+                
+
             }
         }
 
-        private static void CheckAddress(Packet packet)
+        private static MyDevice GetMacDeviceByTreadId(int threadID)
+        {
+            foreach (MyDevice devObj in myDevices)
+            {
+                if (devObj.ID == threadID)
+                    return devObj;
+            }
+            return null;
+        }
+
+        private static string CheckAddress(Packet packet)
         {
             int threadID = System.Threading.Thread.CurrentThread.ManagedThreadId; //fetch current thread ID
             string mac = packet.Ethernet.Source.ToString();
@@ -148,7 +170,11 @@ namespace Network_Bridge
                         Console.WriteLine("Mac address: " + mac + " added from device: " + device.ID);
                     }
                 }
+
+                
             }
+
+            return mac;
 
             //if(md!=null)
             //{
@@ -157,6 +183,32 @@ namespace Network_Bridge
             //    etherPacket.PayloadPacket = arppacket;
 
             //}
+        }
+
+
+        private static void SendResponse(System.Net.NetworkInformation.PhysicalAddress pysSrc,
+                System.Net.NetworkInformation.PhysicalAddress pysdest,
+                IPAddress destAddrIp,
+                IPAddress myAddrIp)
+        {
+            CaptureDeviceList devices = CaptureDeviceList.Instance;
+            foreach (ICaptureDevice dev in devices)
+            {
+                dev.Open();
+              
+                //System.Net.NetworkInformation.PhysicalAddress pysSrc = null;
+                //System.Net.NetworkInformation.PhysicalAddress pysdest = null;
+                //IPAddress destAddrIp = new IPAddress(null);
+                //IPAddress myAddrIp = new IPAddress(null);
+
+
+                var ethernetPacket = new PacketDotNet.EthernetPacket(pysSrc, pysdest, PacketDotNet.EthernetPacketType.Arp);
+
+                var arpPacket = new PacketDotNet.ARPPacket(PacketDotNet.ARPOperation.Response, pysdest, destAddrIp, pysSrc, myAddrIp );
+                ethernetPacket.PayloadPacket = arpPacket;
+
+                
+            }
         }
      
         static void Main(string[] args)

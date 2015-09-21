@@ -42,3 +42,11 @@ E:\Cyber\Network Bridge\latest 20.09\Network-Bridge\Network-Bridge\bin\Debug\Net
 E:\Cyber\Network Bridge\latest 20.09\Network-Bridge\Network-Bridge\bin\Debug\Network-Bridge.pdb
 E:\Cyber\Network Bridge\latest 20.09\Network-Bridge\Network-Bridge\bin\Debug\PacketDotNet.xml
 E:\Cyber\Network Bridge\latest 20.09\Network-Bridge\Network-Bridge\bin\Debug\SharpPcap.xml
+F:\Cyber\Network Bridge\latest 21.09\Network-Bridge\Network-Bridge\bin\Debug\Network-Bridge.exe.config
+F:\Cyber\Network Bridge\latest 21.09\Network-Bridge\Network-Bridge\obj\Debug\Network-Bridge.exe
+F:\Cyber\Network Bridge\latest 21.09\Network-Bridge\Network-Bridge\obj\Debug\Network-Bridge.pdb
+F:\Cyber\Network Bridge\latest 21.09\Network-Bridge\Network-Bridge\obj\Debug\Network-Bridge.csprojResolveAssemblyReference.cache
+F:\Cyber\Network Bridge\latest 21.09\Network-Bridge\Network-Bridge\bin\Debug\Network-Bridge.exe
+F:\Cyber\Network Bridge\latest 21.09\Network-Bridge\Network-Bridge\bin\Debug\Network-Bridge.pdb
+F:\Cyber\Network Bridge\latest 21.09\Network-Bridge\Network-Bridge\bin\Debug\PacketDotNet.xml
+F:\Cyber\Network Bridge\latest 21.09\Network-Bridge\Network-Bridge\bin\Debug\SharpPcap.xml

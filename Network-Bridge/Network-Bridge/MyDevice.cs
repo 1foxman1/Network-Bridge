@@ -24,12 +24,13 @@ namespace Network_Bridge
         private string macAddress;
         private string ipAddress;
 
-        public MyDevice(PacketDevice device, string macAddress, int id)
+        public MyDevice(PacketDevice device, string macAddress, string ipAddress, int id)
         {
             this.addresses = new List<string>();
             this.device = device;
             this.id = id;
             this.macAddress = macAddress;
+            this.ipAddress = ipAddress;
         } 
 
         public PacketDevice Device
@@ -81,6 +82,19 @@ namespace Network_Bridge
             set
             {
                 this.macAddress = value;
+            }
+        }
+
+        public string IPAddress
+        {
+            get
+            {
+                return this.ipAddress;
+            }
+
+            set
+            {
+                this.ipAddress = value;
             }
         }
 
