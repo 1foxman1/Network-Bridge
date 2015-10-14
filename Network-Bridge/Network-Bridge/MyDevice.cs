@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using PcapDotNet;
 using PcapDotNet.Base;
 using PcapDotNet.Core;
 using PcapDotNet.Packets;
+using PcapDotNet.Packets.Ethernet;
 using PcapDotNet.Packets.IpV4;
 using PcapDotNet.Packets.Transport;
 using PcapDotNet.Packets.Arp;
@@ -13,24 +15,32 @@ using System.Net;
 using System.IO;
 using System.Net.Mail;
 using System.Threading;
+using SharpPcap;
+using System.Net.NetworkInformation;
 
 namespace Network_Bridge
 {
     public class MyDevice
     {
         private PacketDevice device;
-        private List<string> addresses;
+        private ICaptureDevice capDevice;
+        private PacketCommunicator communicator;
+        private List<Address> addresses;
         private int id;
         private string macAddress;
         private string ipAddress;
 
-        public MyDevice(PacketDevice device, string macAddress, string ipAddress, int id)
+        public MyDevice(PacketDevice device, string macAddress, string ipAddress, int id, ICaptureDevice capDevice, PacketCommunicator communicator)
         {
-            this.addresses = new List<string>();
+            this.addresses = new List<Address>();
             this.device = device;
             this.id = id;
             this.macAddress = macAddress;
             this.ipAddress = ipAddress;
+            this.capDevice = capDevice;
+            this.communicator = communicator;
+
+
         } 
 
         public PacketDevice Device
@@ -46,7 +56,7 @@ namespace Network_Bridge
             }
         }
 
-        public List<string> Addresses
+        public List<Address> Addresses
         {
             get
             {
@@ -98,7 +108,30 @@ namespace Network_Bridge
             }
         }
 
+        public ICaptureDevice CapDevice
+        {
+            get
+            {
+                return this.capDevice;
+            }
 
+            set
+            {
+                this.capDevice = value;
+            }
+        }
 
+        public PacketCommunicator Communicator  
+        {
+            get
+            {
+                return this.communicator;
+            }
+
+            set
+            {
+                this.communicator = value;
+            }
+        }
     }
 }
