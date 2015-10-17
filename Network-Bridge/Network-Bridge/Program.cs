@@ -180,7 +180,7 @@ namespace Network_Bridge
 
                     foreach (MyDevice dev in myDevices)
                     {
-                        if (dev.ID == threadID)
+                        if (dev.ID != threadID)
                         {
                             newDev = dev;
                         }
@@ -195,9 +195,11 @@ namespace Network_Bridge
                         }
                     }
 
-                    EthernetLayer ethLayer = packet.Ethernet.Payload.ExtractLayer() as EthernetLayer;
-                    MacAddress ma = new MacAddress(addr.Mac);
-                    //ethLayer.Destination = ma;
+                    if (addr != null)
+                    {
+                        EthernetLayer ethLayer = packet.Ethernet.Payload.ExtractLayer() as EthernetLayer;
+                        ethLayer.Destination = new MacAddress(addr.Mac);
+                    }
                     IpV4Layer ipLayer = (IpV4Layer)packet.Ethernet.IpV4.ExtractLayer();
                     PayloadLayer payload = (PayloadLayer)packet.Ethernet.Payload.ExtractLayer();
 
