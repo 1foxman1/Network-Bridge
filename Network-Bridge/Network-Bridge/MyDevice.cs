@@ -25,14 +25,16 @@ namespace Network_Bridge
         private PacketDevice device;
         private ICaptureDevice capDevice;
         private PacketCommunicator communicator;
-        private List<Address> addresses;
+        private List<Address> switchAddresses;
+        private List<Address> computerAddresses;
         private int id;
         private string macAddress;
         private string ipAddress;
 
         public MyDevice(PacketDevice device, string macAddress, string ipAddress, int id, ICaptureDevice capDevice, PacketCommunicator communicator)
         {
-            this.addresses = new List<Address>();
+            this.switchAddresses = new List<Address>();
+            this.computerAddresses = new List<Address>();
             this.device = device;
             this.id = id;
             this.macAddress = macAddress;
@@ -41,8 +43,18 @@ namespace Network_Bridge
             this.communicator = communicator;
 
 
-        } 
+        }
 
+        public string MacAddressWithDots()
+        {
+                string newMac = this.macAddress;
+                for (int i = 2; i < this.macAddress.Length + 3; i += 3)
+                {
+                    newMac = newMac.Insert(i, ":");
+                }
+                return newMac;
+
+        }
         public PacketDevice Device
         {
             get
@@ -56,16 +68,29 @@ namespace Network_Bridge
             }
         }
 
-        public List<Address> Addresses
+        public List<Address> SwitchAddresses
         {
             get
             {
-                return this.addresses;
+                return this.switchAddresses;
             }
 
             set
             {
-                this.addresses = value;
+                this.switchAddresses = value;
+            }
+        }
+
+        public List<Address> ComputerAddresses
+        {
+            get
+            {
+                return this.computerAddresses;
+            }
+
+            set
+            {
+                this.computerAddresses = value;
             }
         }
 
