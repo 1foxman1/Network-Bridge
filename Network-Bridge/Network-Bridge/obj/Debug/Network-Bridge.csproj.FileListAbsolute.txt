@@ -132,3 +132,14 @@ F:\Cyber\Network Bridge\latest 28.10\Network-Bridge\Network-Bridge\bin\Debug\Net
 F:\Cyber\Network Bridge\latest 28.10\Network-Bridge\Network-Bridge\bin\Debug\PacketDotNet.xml
 F:\Cyber\Network Bridge\latest 28.10\Network-Bridge\Network-Bridge\bin\Debug\SharpPcap.xml
 F:\Cyber\Network Bridge\latest 28.10\Network-Bridge\Network-Bridge\obj\Debug\Network-Bridge.csprojResolveAssemblyReference.cache
+F:\Cyber\Network Bridge\latest 1.11\Network-Bridge\Network-Bridge\bin\Debug\Network-Bridge.exe.config
+F:\Cyber\Network Bridge\latest 1.11\Network-Bridge\Network-Bridge\obj\Debug\Network-Bridge.exe
+F:\Cyber\Network Bridge\latest 1.11\Network-Bridge\Network-Bridge\obj\Debug\Network-Bridge.pdb
+E:\Cyber\Network Bridge\latest 1.11\Network-Bridge\Network-Bridge\bin\Debug\Network-Bridge.exe.config
+E:\Cyber\Network Bridge\latest 1.11\Network-Bridge\Network-Bridge\obj\Debug\Network-Bridge.exe
+E:\Cyber\Network Bridge\latest 1.11\Network-Bridge\Network-Bridge\obj\Debug\Network-Bridge.pdb
+E:\Cyber\Network Bridge\latest 1.11\Network-Bridge\Network-Bridge\bin\Debug\Network-Bridge.exe
+E:\Cyber\Network Bridge\latest 1.11\Network-Bridge\Network-Bridge\bin\Debug\Network-Bridge.pdb
+E:\Cyber\Network Bridge\latest 1.11\Network-Bridge\Network-Bridge\bin\Debug\PacketDotNet.xml
+E:\Cyber\Network Bridge\latest 1.11\Network-Bridge\Network-Bridge\bin\Debug\SharpPcap.xml
+E:\Cyber\Network Bridge\latest 1.11\Network-Bridge\Network-Bridge\obj\Debug\Network-Bridge.csprojResolveAssemblyReference.cache

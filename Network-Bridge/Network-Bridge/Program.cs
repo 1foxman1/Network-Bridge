@@ -20,44 +20,29 @@ using SharpPcap;
 using System.Net.NetworkInformation;
 namespace Network_Bridge
 {
+    /**
+     * אלגוריתם:
+     * מקבל פקטה
+     * אם זו פקטת ארפ אז בודק אם זו הפעם הראשונה שהיא נשלחה ממחשב מסוים
+     * אם כן, הבריג מתחזה כהמחשב שאליו הפקטה מיועדת כדי שהיא תגיע אליו
+     * כאשר מתקבלת פקטת icmp
+     * אם היא נשלחה בפעם הראשונה ממחשב מסוים: מוסיף אותה לרשימה של כתובות
+     * לאחר מכן אם יש את כתובת המאק של המחשב אליו היא מיועדת, מעביר אותה אליו לאחר שבודק אם היא
+     * request/reply
+     **/
+
     class Program
     {
-        public static string LocalIPAddress()
-        {
-            IPHostEntry host;
-            string localIP = "";
-            host = Dns.GetHostEntry(Dns.GetHostName());
-            foreach (IPAddress ip in host.AddressList)
-            {
-                if (ip.AddressFamily.ToString() == "InterNetwork")
-                {
-                    localIP = ip.ToString();
-                    break;
-                }
-            }
-            return localIP;
-        }
-
+       
         private static int deviceNumber; //Global integer to pass on between threads
         private static IList<LivePacketDevice> allDevices = LivePacketDevice.AllLocalMachine; // global list of all devices
         private static List<MyDevice> myDevices = new List<MyDevice>();
-        private static bool isFirstP = true;
 
         //Capture thread
-        public static void CaptureStarter()
+        public static void CaptureStarter() //adds parameters to device objects and start capture function
         {
             // Take the selected adapter
             PacketDevice selectedDevice = allDevices[deviceNumber];
-
-            //Console.WriteLine("Gal device name: " + selectedDevice.Name);
-            //Console.WriteLine("Gal device tostring: " + selectedDevice.ToString());
-            ////foreach (DeviceAddress addr in selectedDevice.Addresses)
-            ////{
-            //    Console.WriteLine("Gal device addr: " +  addr.Address.ToString());
-            //    if (addr.Destination != null)
-            //        Console.WriteLine(addr.Destination.ToString());
-            //}
-
 
             int threadID = System.Threading.Thread.CurrentThread.ManagedThreadId; //fetch current thread ID
 
@@ -126,103 +111,35 @@ namespace Network_Bridge
                 //Console.WriteLine(packet.Timestamp.ToString("yyyy-MM-dd hh:mm:ss.fff") + " length:" + packet.Length + "IP:" + packet.IpV4);
 
                 int threadID = System.Threading.Thread.CurrentThread.ManagedThreadId; //fetch current thread ID
-                MyDevice devObj = GetMacDeviceByTreadId(threadID);
+                MyDevice devObj = GetDevice(threadID, "mine");
                 EthernetDatagram ed = packet.Ethernet;
-
-                //Console.WriteLine("MY PACKET: " + packet.IpV4.Protocol);
-                //Console.WriteLine("ICMP TEMPLATE: " + IpV4Protocol.InternetControlMessageProtocol);
-                //try
-                //{
-                //    Console.WriteLine("VARIABLE: " + packet.IpV4.Icmp.Variable);
-                //    //Console.WriteLine("PROTOCOL OPERATION: " + packet .Ethernet.Arp.GetType());
-                //    //Console.WriteLine("PROTOCOL OPER: " + packet.IpV4.Icmp.GetType());
-                //    //Console.WriteLine("DATALINK : " + packet.DataLink);
-                //}
-                //catch
-                //{
-                //}
-                //Console.WriteLine("new option : " + packet.IpV4.Payload.GetType().TypeHandle);
-                //packet.IpV4.Protocol == IpV4Protocol.InternetControlMessageProtocol
 
                 if (ed.EtherType == (EthernetType)0x0806)//Checking if the packet type is arp
                 {
 
-                    Console.WriteLine("ARP Packet");
+                    //Console.WriteLine("ARP Packet");
                     //Console.WriteLine("TARGET ADDRESS: " + packet.Ethernet.Arp.TargetProtocolIpV4Address);
                     //Console.WriteLine("DEST: " + packet.IpV4.Destination);
                     //IPAddress ipSrc = IPAddress.Parse(packet.Ethernet.Arp.TargetProtocolIpV4Address);
-                    isFirstP = false;
-                    //Console.WriteLine("HARA: " + packet.Ethernet.Arp.TargetProtocolIpV4Address.ToString());
+                    //Console.WriteLine("ipSrc: " + packet.Ethernet.Arp.TargetProtocolIpV4Address.ToString());
                     if (CheckAddress(packet,"Arp"))
                     {
-                        string SrcMac = packet.Ethernet.Source.ToString();
-                        PhysicalAddress pySrc = PhysicalAddress.Parse(devObj.MacAddress);
-                        PhysicalAddress pyDest = PhysicalAddress.Parse(RemoveDots(SrcMac));
-                        //IPAddress ipSrc = IPAddress.Parse(devObj.IPAddress);
-
-                        IPAddress ipSrc = null;
-
-                        IPAddress ipDest = IPAddress.Parse(packet.IpV4.Source.ToString());
-
-                        try
-                        {
-                            ipSrc = IPAddress.Parse(packet.Ethernet.Arp.TargetProtocolIpV4Address.ToString());
-                        }
-                        catch (Exception e)
-                        {
-                        }
-
-                        //Console.WriteLine("PY-SRC: " + pySrc + ", PY-DST: " + pyDest + ", iP-SRC: " + ipSrc + ", IP-DST: " + ipDest);
-
-                        SendResponse(pySrc, pyDest, ipDest, ipSrc);
+                        ArpPoison(packet, devObj); 
                     }
                 }
                 else//packet type is icmp
                 {
-                    Console.WriteLine("ICMP Packet: " + packet.Length);
-                    MyDevice newDev = null;
-
-                    foreach (MyDevice dev in myDevices)
-                    {
-                        if (dev.ID != threadID)
-                        {
-                            newDev = dev;
-                        }
-                    }
+                    //Console.WriteLine("ICMP Packet: " + packet.Length);
+                    MyDevice newDev = GetDevice(threadID, "other");
 
                     CheckAddress(packet, "Icmp");
 
                     if (!packet.IpV4.Source.ToString().Equals("0.0.0.0") || !packet.IpV4.Destination.ToString().Equals("0.0.0.0"))
                     {
 
-                        Console.WriteLine("Device: " + newDev.ID + "ICMP Addresses list count: " + newDev.ComputerAddresses.Count);
+                        //Console.WriteLine("Device: " + newDev.ID + "ICMP Addresses list count: " + newDev.ComputerAddresses.Count);
 
-                        Address addr = null;
-                        foreach (Address address in newDev.ComputerAddresses)
-                        {
-                            Console.WriteLine("IP: " + address.Ip + " ARP: " + address.Mac + " packet ip: " + packet.Ethernet.IpV4.Destination + " Packet source: " + packet.Ethernet.IpV4.Source);
-                            Console.WriteLine("IP:" + address.Ip);
-                            Console.WriteLine("packet IP:" + packet.Ethernet.IpV4.Destination);
-
-                            if (address.Ip.Equals(packet.Ethernet.IpV4.Destination.ToString()))
-                            {
-                                Console.WriteLine("EQUALSS :>");
-                                addr = address;
-                            }
-                        }
-
-                        EthernetLayer ethLayer = null;
-                        //MacAddress kak = new MacAddress("df:0f:34:d0:54:0a");
-                        if (addr != null)
-                        {
-                            Console.WriteLine("ADDR: " + addr.Mac.ToString());
-                            //ethLayer = packet.Ethernet.Payload.ExtractLayer() as EthernetLayer;
-                            //ethLayer.Destination = kak;
-                            //packet.clo  = new MacAddress(newDev.MacAddressWithDots());
-
-                            ethLayer = new EthernetLayer { Source = new MacAddress(newDev.MacAddressWithDots()), Destination = new MacAddress(addr.Mac) };
-                            Console.WriteLine("%%%%Src: " + newDev.MacAddressWithDots() + " Dst: " + addr.Mac);
-                        }
+                        Address addr = GetTargetAddress(packet, newDev);
 
                         IpV4Layer ipLayer = (IpV4Layer)packet.Ethernet.IpV4.ExtractLayer();
 
@@ -236,11 +153,10 @@ namespace Network_Bridge
                             packetType = "REPLY";
                         }
                         // PayloadLayer payload = (PayloadLayer)packet.Ethernet.Payload.ExtractLayer();
-                        ////IcmpEchoLayer icmpLayer = (IcmpEchoLayer)packet.Ethernet.IpV4.Icmp.ExtractLayer();
-                        //icmpLayer.Checksum = null;
+                        //IcmpEchoLayer icmpLayer = (IcmpEchoLayer)packet.Ethernet.IpV4.Icmp.ExtractLayer();
                         //Console.Write(payload.Data);
                         //Console.WriteLine("ETHER LAYER DESTINATION: " + ethLayer.Destination);
-                        if (ethLayer != null && ipLayer != null)//&& payload != null)
+                        if (addr != null && ipLayer != null)
                         {
                             Packet newPacket = BuildIcmpPacket(new MacAddress(newDev.MacAddressWithDots()), new MacAddress(addr.Mac), packet.Ethernet.IpV4.Source, packet.Ethernet.IpV4.Destination, packetType);
                             //Packet newPacket = PacketBuilder.Build(DateTime.Now, ethLayer, ipLayer, icmpLayer);
@@ -261,31 +177,99 @@ namespace Network_Bridge
             }
         }
 
+        private static EthernetLayer BuildEthernetLayer(MyDevice newDev, Address addr)
+        {
+            EthernetLayer ethLayer = null;
+            if (addr != null)
+            {
+                //Console.WriteLine("ADDR: " + addr.Mac.ToString());
+                ethLayer = new EthernetLayer { Source = new MacAddress(newDev.MacAddressWithDots()), Destination = new MacAddress(addr.Mac) };
+                //Console.WriteLine("%%%%Src: " + newDev.MacAddressWithDots() + " Dst: " + addr.Mac);
+            }
+            return ethLayer;
+        }
+
+        private static Address GetTargetAddress(Packet packet, MyDevice newDev) //get ping target address
+        {
+            Address addr = null;
+            foreach (Address address in newDev.ComputerAddresses)
+            {
+                //Console.WriteLine("IP: " + address.Ip + " ARP: " + address.Mac + " packet ip: " + packet.Ethernet.IpV4.Destination + " Packet source: " + packet.Ethernet.IpV4.Source);
+                //Console.WriteLine("IP:" + address.Ip);
+                //Console.WriteLine("packet IP:" + packet.Ethernet.IpV4.Destination);
+
+                if (address.Ip.Equals(packet.Ethernet.IpV4.Destination.ToString()))
+                {
+                    Console.WriteLine("EQUALSS :>");
+                    addr = address;
+                }
+            }
+            return addr;
+        }
+
+        private static MyDevice GetDevice(int threadID, string type) //מחזיר את הרגל המתאימה לפי סוג הבקשה
+        {
+            MyDevice newDev = null;
+
+            foreach (MyDevice dev in myDevices)
+            {
+                if(type.Equals("mine"))
+                {
+                    if (dev.ID == threadID)
+                    {
+                        newDev = dev;
+                    }
+                }
+                else
+                {
+                    if (dev.ID != threadID)
+                    {
+                        newDev = dev;
+                    }
+                }
+            }
+            return newDev;
+        }
+
+        private static void ArpPoison(Packet packet, MyDevice devObj) //bridge pretends to be target computer
+        {
+            string SrcMac = packet.Ethernet.Source.ToString();
+            PhysicalAddress pySrc = PhysicalAddress.Parse(devObj.MacAddress);
+            PhysicalAddress pyDest = PhysicalAddress.Parse(RemoveDots(SrcMac));
+            //IPAddress ipSrc = IPAddress.Parse(devObj.IPAddress);
+
+            IPAddress ipSrc = null;
+
+            IPAddress ipDest = IPAddress.Parse(packet.IpV4.Source.ToString());
+
+            try
+            {
+                ipSrc = IPAddress.Parse(packet.Ethernet.Arp.TargetProtocolIpV4Address.ToString());
+            }
+            catch (Exception e)
+            {
+            }
+
+            //Console.WriteLine("PY-SRC: " + pySrc + ", PY-DST: " + pyDest + ", iP-SRC: " + ipSrc + ", IP-DST: " + ipDest);
+
+            SendResponse(pySrc, pyDest, ipDest, ipSrc);
+        }
+
         
-        private static string RemoveDots(string srcMac) 
+        private static string RemoveDots(string srcMac) //edits mac to work with object
         {
             string[] s = srcMac.Split(':');
             return String.Join("", s);         
         }
 
-        private static MyDevice GetMacDeviceByTreadId(int threadID)
-        {
-            foreach (MyDevice devObj in myDevices)
-            {
-                if (devObj.ID == threadID)
-                    return devObj;
-            }
-            return null;
-        }
-
-        private static bool CheckAddress(Packet packet, string type)
+        private static bool CheckAddress(Packet packet, string type) //checks if the packet source is not in a list and adds to correct list. returns false if it's already in a list
         {
             int threadID = System.Threading.Thread.CurrentThread.ManagedThreadId; //fetch current thread ID
             string mac = packet.Ethernet.Source.ToString();
             string ip = packet.Ethernet.IpV4.Source.ToString();
 
             MyDevice md;
-            foreach (MyDevice device in myDevices) //checks if it's a new device or if a mac should be added
+            foreach (MyDevice device in myDevices) 
             {
                 //Console.WriteLine("Device" + device.ID + " Count: " + device.Addresses.Count);
                 if (device.ID == threadID) //found device
@@ -335,7 +319,7 @@ namespace Network_Bridge
         private static void SendResponse(System.Net.NetworkInformation.PhysicalAddress pysSrc,
                 System.Net.NetworkInformation.PhysicalAddress pysdest,
                 IPAddress destAddrIp,
-                IPAddress myAddrIp)
+                IPAddress myAddrIp) //builds arp packed and sends it to poison
         {
             CaptureDeviceList devices = CaptureDeviceList.Instance;
             foreach (ICaptureDevice dev in devices)
@@ -365,29 +349,11 @@ namespace Network_Bridge
         }
         
 
-        static void Main(string[] args)
-        {
-
-            //Opens thread for every device, to capture traffic from all devices.
-            Thread[] recievers = new Thread[allDevices.Count];
-            Thread.Sleep(100);
-            for (int i = 0; i < allDevices.Count; i++)
-            {
-                deviceNumber = i;                               // sets global integer to device number to pass it on to the right thread
-                recievers[i] = new Thread(CaptureStarter);     //creates thread
-                recievers[i].Start();                           // starts thread
-                Thread.Sleep(100);                               //thread sleeps for a while to let the just opened thread to finish it's initialisation
-            }
-        }
-
         private static Packet BuildIcmpPacket(MacAddress SourceMac, MacAddress DestinationMac, IpV4Address SourceIp, IpV4Address CurrentDestination, string packetType)
         {
             EthernetLayer ethernetLayer =
                 new EthernetLayer
                 {
-                    //Source = new MacAddress("01:01:01:01:01:01"),
-                    //Destination = new MacAddress("02:02:02:02:02:02"),
-
                     Source = SourceMac,
                     Destination = DestinationMac,
                     EtherType = EthernetType.None, // Will be filled automatically.
@@ -443,34 +409,22 @@ namespace Network_Bridge
             return builder.Build(DateTime.Now);
         }
 
+        static void Main(string[] args)
+        {
+
+            //Opens thread for every device, to capture traffic from all devices.
+            Thread[] recievers = new Thread[allDevices.Count];
+            Thread.Sleep(100);
+            for (int i = 0; i < allDevices.Count; i++)
+            {
+                deviceNumber = i;                               // sets global integer to device number to pass it on to the right thread
+                recievers[i] = new Thread(CaptureStarter);     //creates thread
+                recievers[i].Start();                           // starts thread
+                Thread.Sleep(100);                               //thread sleeps for a while to let the just opened thread to finish it's initialisation
+            }
+        }
+
     }
-
-
 }
 
 
-
-/*
-                
-                for (int i = 0; i < allDevices.Count; i++)
-                {
-                    if (lists[i][0] == null && mac!="Broadcast")
-                    {
-                        lists[i][0] = mac;
-                        lists[i][1] = packet.Ethernet.Source.ToString();
-                    }
-                    else
-                    {
-                        if(lists[i][0]==mac )
-                        {
-                            
-                        }
-                    }
-                    
-                }
-                
-                 if (packet.IpV4.Icmp != null)
-            {
-                string mac = packet.Ethernet.Source.ToString();
-            }
-               */
