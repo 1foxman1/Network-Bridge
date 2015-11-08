@@ -87,11 +87,11 @@ namespace Network_Bridge
                 //Console.WriteLine("Dev Name:" + device.Device.Name);
                 //Console.WriteLine("Dev MAC: " + device.MacAddress);
 
-                using (BerkeleyPacketFilter filter = communicator.CreateFilter("icmp or arp"))
-                {
-                    // Set the filter
-                    communicator.SetFilter(filter);
-                }
+                //using (BerkeleyPacketFilter filter = communicator.CreateFilter("icmp or arp"))
+                //{
+                //     //Set the filter
+                //    communicator.SetFilter(filter);
+                //}
 
                 Console.WriteLine("Listening on device " + (deviceNumber + 1) + " out of " + allDevices.Count + " :  " + selectedDevice.Description + "...");
 
@@ -105,7 +105,6 @@ namespace Network_Bridge
         // Callback function invoked by Pcap.Net for every incoming packet
         private static void PacketHandler(Packet packet)
         {
-              
             if (myDevices[0].IPAddress != packet.IpV4.Source.ToString())
             {
                 //Console.WriteLine(packet.Timestamp.ToString("yyyy-MM-dd hh:mm:ss.fff") + " length:" + packet.Length + "IP:" + packet.IpV4);
@@ -114,14 +113,16 @@ namespace Network_Bridge
                 MyDevice devObj = GetDevice(threadID, "mine");
                 EthernetDatagram ed = packet.Ethernet;
 
-                if (ed.EtherType == (EthernetType)0x0806)//Checking if the packet type is arp
+                if (ed.EtherType == EthernetType.Arp)//Checking if the packet type is arp
                 {
+                    Console.WriteLine("ARP packet");
 
                     //Console.WriteLine("ARP Packet");
                     //Console.WriteLine("TARGET ADDRESS: " + packet.Ethernet.Arp.TargetProtocolIpV4Address);
                     //Console.WriteLine("DEST: " + packet.IpV4.Destination);
                     //IPAddress ipSrc = IPAddress.Parse(packet.Ethernet.Arp.TargetProtocolIpV4Address);
                     //Console.WriteLine("ipSrc: " + packet.Ethernet.Arp.TargetProtocolIpV4Address.ToString());
+
                     if (CheckAddress(packet,"Arp"))
                     {
                         ArpPoison(packet, devObj); 
@@ -129,50 +130,111 @@ namespace Network_Bridge
                 }
                 else//packet type is icmp
                 {
-                    //Console.WriteLine("ICMP Packet: " + packet.Length);
-                    MyDevice newDev = GetDevice(threadID, "other");
-
-                    CheckAddress(packet, "Icmp");
-
-                    if (!packet.IpV4.Source.ToString().Equals("0.0.0.0") || !packet.IpV4.Destination.ToString().Equals("0.0.0.0"))
+                    if (ed.IpV4.Protocol == IpV4Protocol.InternetControlMessageProtocol)
                     {
-
-                        //Console.WriteLine("Device: " + newDev.ID + "ICMP Addresses list count: " + newDev.ComputerAddresses.Count);
-
-                        Address addr = GetTargetAddress(packet, newDev);
-
-                        IpV4Layer ipLayer = (IpV4Layer)packet.Ethernet.IpV4.ExtractLayer();
-
-                        string packetType = "REQUEST";
-                        try
+                        Console.WriteLine("ICMP packet");
+                        HandleIcmp(packet, threadID);
+                    }
+                    else
+                    {
+                        if (packet.Ethernet.IpV4.Protocol == IpV4Protocol.Tcp)
                         {
-                            IcmpEchoLayer test = (IcmpEchoLayer)packet.Ethernet.IpV4.Icmp.ExtractLayer();
+                            Console.WriteLine("TCP packet");
+                            HandleTcp(packet, threadID);
                         }
-                        catch
+                        //else
+                        //{
+                        //    Console.WriteLine("Packet not recognized");
+                        //}
+                    }
+                }
+            }
+        }
+
+        private static void HandleTcp(Packet packet, int threadID)
+        {
+            TcpLayer tcpLayer = (TcpLayer)packet.Ethernet.IpV4.Tcp.ExtractLayer();
+            MyDevice newDev = GetDevice(threadID, "other");
+
+            IpV4Layer ipLayer = (IpV4Layer)packet.Ethernet.IpV4.ExtractLayer();
+            PayloadLayer tcpPayload = (PayloadLayer)packet.Ethernet.IpV4.Tcp.Payload.ExtractLayer();
+
+            Packet newPacket = null;
+
+            string targetMac = null;
+
+            targetMac = GetTargetAddress(packet, newDev).Mac;
+
+            if (targetMac != null)
+            {
+                newPacket = BuildTcpPacket(new MacAddress(newDev.MacAddressWithDots()), new MacAddress(targetMac), ipLayer, tcpLayer, tcpPayload);
+            }
+            else
+            {
+                Console.WriteLine("No target MAC found");
+            }
+            
+            Console.WriteLine("packet built");
+
+            if (newPacket.IsValid)
+            {
+                Console.WriteLine("TCP packet sent");
+                newDev.Communicator.SendPacket(newPacket);
+            }
+            else
+            {
+                Console.WriteLine("Packet not valid");
+            }
+
+
+
+            
+
+        }
+
+        private static void HandleIcmp(Packet packet, int threadID)
+        {
+            //Console.WriteLine("ICMP Packet: " + packet.Length);
+            MyDevice newDev = GetDevice(threadID, "other");
+
+            CheckAddress(packet, "Icmp");
+
+            if (!packet.IpV4.Source.ToString().Equals("0.0.0.0") || !packet.IpV4.Destination.ToString().Equals("0.0.0.0"))
+            {
+
+                //Console.WriteLine("Device: " + newDev.ID + "ICMP Addresses list count: " + newDev.ComputerAddresses.Count);
+
+                Address addr = GetTargetAddress(packet, newDev);
+
+                IpV4Layer ipLayer = (IpV4Layer)packet.Ethernet.IpV4.ExtractLayer();
+
+                string packetType = "REQUEST";
+                try
+                {
+                    IcmpEchoLayer test = (IcmpEchoLayer)packet.Ethernet.IpV4.Icmp.ExtractLayer();
+                }
+                catch
+                {
+                    packetType = "REPLY";
+                }
+                // PayloadLayer payload = (PayloadLayer)packet.Ethernet.Payload.ExtractLayer();
+                //IcmpEchoLayer icmpLayer = (IcmpEchoLayer)packet.Ethernet.IpV4.Icmp.ExtractLayer();
+                //Console.Write(payload.Data);
+                //Console.WriteLine("ETHER LAYER DESTINATION: " + ethLayer.Destination);
+                if (addr != null && ipLayer != null)
+                {
+                    Packet newPacket = BuildIcmpPacket(new MacAddress(newDev.MacAddressWithDots()), new MacAddress(addr.Mac), packet.Ethernet.IpV4.Source, packet.Ethernet.IpV4.Destination, packetType);
+                    //Packet newPacket = PacketBuilder.Build(DateTime.Now, ethLayer, ipLayer, icmpLayer);
+                    if (newPacket.IsValid)
+                    {
+                        if (newPacket.Ethernet.Source != newPacket.Ethernet.Destination)
                         {
-                            packetType = "REPLY";
-                        }
-                        // PayloadLayer payload = (PayloadLayer)packet.Ethernet.Payload.ExtractLayer();
-                        //IcmpEchoLayer icmpLayer = (IcmpEchoLayer)packet.Ethernet.IpV4.Icmp.ExtractLayer();
-                        //Console.Write(payload.Data);
-                        //Console.WriteLine("ETHER LAYER DESTINATION: " + ethLayer.Destination);
-                        if (addr != null && ipLayer != null)
-                        {
-                            Packet newPacket = BuildIcmpPacket(new MacAddress(newDev.MacAddressWithDots()), new MacAddress(addr.Mac), packet.Ethernet.IpV4.Source, packet.Ethernet.IpV4.Destination, packetType);
-                            //Packet newPacket = PacketBuilder.Build(DateTime.Now, ethLayer, ipLayer, icmpLayer);
-                            if (newPacket.IsValid)
-                            {
-                                if (newPacket.Ethernet.Source != newPacket.Ethernet.Destination)
-                                {
-                                    newDev.Communicator.SendPacket(newPacket);
-                                    Console.WriteLine("Icmp Packet Sent");
-                                }
-                            }
-                            else
-                                Console.WriteLine("ICMP Packet Is Not Valid :(");
+                            newDev.Communicator.SendPacket(newPacket);
+                            Console.WriteLine("Icmp Packet Sent");
                         }
                     }
-                    
+                    else
+                        Console.WriteLine("ICMP Packet Is Not Valid :(");
                 }
             }
         }
@@ -405,6 +467,58 @@ namespace Network_Bridge
                 builder = new PacketBuilder(ethernetLayer, ipV4Layer, icmpRLayer);
             }
 
+
+            return builder.Build(DateTime.Now);
+        }
+
+        /// <summary>
+        /// This function build an TCP over IPv4 over Ethernet with payload packet.
+        /// </summary>
+        private static Packet BuildTcpPacket(MacAddress SourceMac, MacAddress DestinationMac, IpV4Layer ipV4Layer, TcpLayer tcpLayer, PayloadLayer payloadLayer)
+        {
+            EthernetLayer ethernetLayer =
+                new EthernetLayer
+                {
+                    Source = SourceMac,
+                    Destination = DestinationMac,
+                    EtherType = EthernetType.None, // Will be filled automatically.
+                };
+
+            //IpV4Layer ipV4Layer =
+            //    new IpV4Layer
+            //    {
+            //        Source = SourceIp,
+            //        CurrentDestination = DestinatinIp,
+            //        Fragmentation = IpV4Fragmentation.None,
+            //        HeaderChecksum = null, // Will be filled automatically.
+            //        Identification = 123,
+            //        Options = IpV4Options.None,
+            //        Protocol = null, // Will be filled automatically.
+            //        Ttl = 100,
+            //        TypeOfService = 0,
+            //    };
+
+            //TcpLayer tcpLayer =
+            //    new TcpLayer
+            //    {
+            //        SourcePort = 4050,
+            //        DestinationPort = 25,
+            //        Checksum = null, // Will be filled automatically.
+            //        SequenceNumber = 100,
+            //        AcknowledgmentNumber = 50,
+            //        ControlBits = TcpControlBits.Acknowledgment,
+            //        Window = 100,
+            //        UrgentPointer = 0,
+            //        Options = TcpOptions.None,
+            //    };
+
+            //PayloadLayer payloadLayer =
+            //    new PayloadLayer
+            //    {
+            //        Data = new Datagram(Encoding.ASCII.GetBytes("hello world")),
+            //    };
+
+            PacketBuilder builder = new PacketBuilder(ethernetLayer, ipV4Layer, tcpLayer, payloadLayer);
 
             return builder.Build(DateTime.Now);
         }
