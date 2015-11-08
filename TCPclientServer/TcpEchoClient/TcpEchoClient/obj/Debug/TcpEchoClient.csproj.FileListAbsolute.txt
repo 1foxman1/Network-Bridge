@@ -1,0 +1,6 @@
+F:\Cyber\TCPclientServer\TcpEchoClient\TcpEchoClient\bin\Debug\TcpEchoClient.exe.config
+F:\Cyber\TCPclientServer\TcpEchoClient\TcpEchoClient\obj\Debug\TcpEchoClient.csprojResolveAssemblyReference.cache
+F:\Cyber\TCPclientServer\TcpEchoClient\TcpEchoClient\bin\Debug\TcpEchoClient.exe
+F:\Cyber\TCPclientServer\TcpEchoClient\TcpEchoClient\bin\Debug\TcpEchoClient.pdb
+F:\Cyber\TCPclientServer\TcpEchoClient\TcpEchoClient\obj\Debug\TcpEchoClient.exe
+F:\Cyber\TCPclientServer\TcpEchoClient\TcpEchoClient\obj\Debug\TcpEchoClient.pdb

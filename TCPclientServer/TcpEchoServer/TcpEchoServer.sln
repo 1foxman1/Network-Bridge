@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Express 2012 for Windows Desktop
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TcpEchoServer", "TcpEchoServer\TcpEchoServer.csproj", "{23087A97-D397-4C35-8211-5078E3B993CA}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{23087A97-D397-4C35-8211-5078E3B993CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{23087A97-D397-4C35-8211-5078E3B993CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{23087A97-D397-4C35-8211-5078E3B993CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{23087A97-D397-4C35-8211-5078E3B993CA}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
