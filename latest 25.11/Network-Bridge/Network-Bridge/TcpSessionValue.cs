@@ -4,19 +4,21 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ConsoleApplication16
+namespace Network_Bridge
 {
     class TcpSessionValue
     {
-        public int seqNum { get; set; }
-        public int ackNum { get; set; }
+        public uint seqNum { get; set; }
+        public uint ackNum { get; set; }
         public int windowSize { get; set; }
+        public uint prevseq { get; set; }
 
-        public TcpSessionValue(int seqNum, int ackNum, int windowSize)
+        public TcpSessionValue(uint seqNum, uint ackNum, int windowSize, uint prevseq)
         {
             this.seqNum = seqNum;
             this.ackNum = ackNum;
             this.windowSize = windowSize;
+            this.prevseq = prevseq;
         }
 
         public override string ToString()

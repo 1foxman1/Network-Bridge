@@ -37,10 +37,12 @@ namespace Network_Bridge
         private static int deviceNumber; //Global integer to pass on between threads
         private static IList<LivePacketDevice> allDevices = LivePacketDevice.AllLocalMachine; // global list of all devices
         private static List<MyDevice> myDevices = new List<MyDevice>();
-
+        private static Dictionary<TcpSessionKey, TcpSessionValue> sessionDic = new Dictionary<TcpSessionKey, TcpSessionValue>(); 
+     
         //Capture thread
         public static void CaptureStarter() //adds parameters to device objects and start capture function
         {
+            
             // Take the selected adapter
             PacketDevice selectedDevice = allDevices[deviceNumber];
 
@@ -96,16 +98,69 @@ namespace Network_Bridge
                 Console.WriteLine("Listening on device " + (deviceNumber + 1) + " out of " + allDevices.Count + " :  " + selectedDevice.Description + "...");
 
                 // Start the capture
-
                 communicator.ReceivePackets(0, PacketHandler);
-                
             }
+        }
+
+        private static void DiscoverNetworkBroadcast(PacketCommunicator communicator, MyDevice device)
+        {
+            // Supposing to be on ethernet, set mac source
+            MacAddress source = new MacAddress(device.MacAddressWithDots());
+
+            // set mac destination to broadcast
+            MacAddress destination = new MacAddress("FF:FF:FF:FF:FF:FF");
+
+            // Create the packets layers
+
+            // Ethernet Layer
+            EthernetLayer ethernetLayer = new EthernetLayer
+            {
+                Source = source,
+                Destination = destination
+            };
+
+            // IPv4 Layer
+            IpV4Layer ipV4Layer = new IpV4Layer
+            {
+                Source = new IpV4Address(device.IPAddress),
+                Ttl = 128,
+                // The rest of the important parameters will be set for each packet
+            };
+
+            // ICMP Layer
+            IcmpEchoLayer icmpLayer = new IcmpEchoLayer();
+
+            // Create the builder that will build our packets
+            PacketBuilder builder = new PacketBuilder(ethernetLayer, ipV4Layer, icmpLayer);
+
+            string ipBeg = device.IpWithoutEnd();
+            //Send 100 Pings to different destination with different parameters
+            for (int i = 0; i < 256; i++)
+            {
+                // Set IPv4 parameters
+                ipV4Layer.CurrentDestination = new IpV4Address(ipBeg + i);
+                ipV4Layer.Identification = (ushort)i;
+
+                // Set ICMP parameters
+                icmpLayer.SequenceNumber = (ushort)i;
+                icmpLayer.Identifier = (ushort)i;
+
+                // Build the packet
+                Packet packet = builder.Build(DateTime.Now);
+
+                // Send down the packet
+                communicator.SendPacket(packet);
+                //Console.WriteLine("172.16.1." + i);
+            }
+
+
         }
 
         // Callback function invoked by Pcap.Net for every incoming packet
         private static void PacketHandler(Packet packet)
         {
-            if (myDevices[0].IPAddress != packet.IpV4.Source.ToString())
+            string packSource = packet.Ethernet.Source.ToString();
+            if (myDevices[0].IPAddress != packet.IpV4.Source.ToString() && myDevices[0].MacAddress != packSource && myDevices[1].MacAddress != packSource)
             {
                 //Console.WriteLine(packet.Timestamp.ToString("yyyy-MM-dd hh:mm:ss.fff") + " length:" + packet.Length + "IP:" + packet.IpV4);
 
@@ -115,7 +170,7 @@ namespace Network_Bridge
 
                 if (ed.EtherType == EthernetType.Arp)//Checking if the packet type is arp
                 {
-                    Console.WriteLine("ARP packet");
+                    Console.WriteLine("ARP packet MAC src=" + packet.Ethernet.Source.ToString());
 
                     //Console.WriteLine("ARP Packet");
                     //Console.WriteLine("TARGET ADDRESS: " + packet.Ethernet.Arp.TargetProtocolIpV4Address);
@@ -123,16 +178,25 @@ namespace Network_Bridge
                     //IPAddress ipSrc = IPAddress.Parse(packet.Ethernet.Arp.TargetProtocolIpV4Address);
                     //Console.WriteLine("ipSrc: " + packet.Ethernet.Arp.TargetProtocolIpV4Address.ToString());
 
-                    if (CheckAddress(packet,"Arp"))
+                    ////if (CheckAddress(packet, "Arp"))
+                    ////{
+                    //    ArpPoison(packet, devObj);
+                    ////}
+
+                    Console.WriteLine("A=" + RemoveDots(packet.Ethernet.Source.ToString()));
+                    Console.WriteLine("B=" + devObj.MacAddress);
+                    Console.WriteLine("C=" + GetDevice(threadID, "other").MacAddress);
+
+                    if(!(RemoveDots(packet.Ethernet.Source.ToString()).Equals(devObj.MacAddress) || RemoveDots(packet.Ethernet.Source.ToString()).Equals(GetDevice(threadID,"other").MacAddress)))
                     {
-                        ArpPoison(packet, devObj); 
+                        ArpPoison(packet, devObj);
                     }
                 }
                 else//packet type is icmp
                 {
                     if (ed.IpV4.Protocol == IpV4Protocol.InternetControlMessageProtocol)
                     {
-                        Console.WriteLine("ICMP packet");
+                        Console.WriteLine("ICMP packet IP DEST=" + packet.Ethernet.IpV4.Destination.ToString());
                         HandleIcmp(packet, threadID);
                     }
                     else
@@ -151,6 +215,7 @@ namespace Network_Bridge
             }
         }
 
+
         private static void HandleTcp(Packet packet, int threadID)
         {
             TcpLayer tcpLayer = (TcpLayer)packet.Ethernet.IpV4.Tcp.ExtractLayer();
@@ -158,37 +223,88 @@ namespace Network_Bridge
 
             IpV4Layer ipLayer = (IpV4Layer)packet.Ethernet.IpV4.ExtractLayer();
             PayloadLayer tcpPayload = (PayloadLayer)packet.Ethernet.IpV4.Tcp.Payload.ExtractLayer();
-
-            Packet newPacket = null;
-
-            string targetMac = null;
-
-            targetMac = GetTargetAddress(packet, newDev).Mac;
-
-            if (targetMac != null)
-            {
-                newPacket = BuildTcpPacket(new MacAddress(newDev.MacAddressWithDots()), new MacAddress(targetMac), ipLayer, tcpLayer, tcpPayload);
-            }
-            else
-            {
-                Console.WriteLine("No target MAC found");
-            }
             
-            Console.WriteLine("packet built");
+            TcpSessionKey tcpKey1 = new TcpSessionKey(ipLayer.Source.ToString(), tcpLayer.SourcePort, ipLayer.Destination.ToString(), tcpLayer.DestinationPort);
+            TcpSessionKey tcpKey2 = new TcpSessionKey(ipLayer.Destination.ToString(), tcpLayer.DestinationPort, ipLayer.Source.ToString(), tcpLayer.SourcePort);
 
-            if (newPacket.IsValid)
+
+            bool newSession = false;
+
+            TcpSessionValue currentSession = null;
+
+            try
             {
-                Console.WriteLine("TCP packet sent");
-                newDev.Communicator.SendPacket(newPacket);
+                currentSession = sessionDic[tcpKey1];
             }
-            else
+            catch
             {
-                Console.WriteLine("Packet not valid");
+                try
+                {
+                    currentSession = sessionDic[tcpKey2];
+                }
+                catch
+                {
+                    newSession = true;
+                    TcpSessionKey tcpKeyN = new TcpSessionKey(ipLayer.Source.ToString(), tcpLayer.SourcePort, ipLayer.Destination.ToString(), tcpLayer.DestinationPort);
+                    TcpSessionValue tcpValueN = new TcpSessionValue(tcpLayer.SequenceNumber, tcpLayer.AcknowledgmentNumber, 64000, tcpLayer.SequenceNumber);
+                    currentSession = tcpValueN;
+                    sessionDic.Add(tcpKeyN, tcpValueN);
+                }
+            }
+
+       
+
+            if (!newSession)
+            {
+                int prevAckNum = (int)currentSession.ackNum;
+                int prevSeqNum = (int)currentSession.seqNum;
+                int curAckNum = (int)tcpLayer.AcknowledgmentNumber;
+                int curSeqNum = (int)tcpLayer.SequenceNumber;
+                int oldSeqNum = (int)currentSession.prevseq;
+
+      
+                if (curSeqNum - oldSeqNum < currentSession.windowSize && curSeqNum - oldSeqNum >= 0 && (curSeqNum == prevSeqNum || curAckNum == prevSeqNum))
+                {
+                    currentSession.prevseq = currentSession.seqNum;
+                    currentSession.ackNum = tcpLayer.AcknowledgmentNumber;
+                    currentSession.seqNum = tcpLayer.SequenceNumber;
+
+                    Packet newPacket = null;
+
+                    string targetMac = null;
+
+                    targetMac = GetTargetAddress(packet, newDev).Mac;
+
+                    if (targetMac != null)
+                    {
+                        
+                        newPacket = BuildTcpPacket(new MacAddress(newDev.MacAddressWithDots()), new MacAddress(targetMac), ipLayer, tcpLayer, tcpPayload);
+                    }
+                    else
+                    {
+                        Console.WriteLine("No target MAC found");
+                    }
+
+                    Console.WriteLine("packet built");
+
+                    if (newPacket.IsValid)
+                    {
+                        Console.WriteLine("TCP packet sent");
+                        newDev.Communicator.SendPacket(newPacket);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Packet not valid");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("TCP packet not valid");
+                }
+
             }
 
 
-
-            
 
         }
 
@@ -196,7 +312,6 @@ namespace Network_Bridge
         {
             //Console.WriteLine("ICMP Packet: " + packet.Length);
             MyDevice newDev = GetDevice(threadID, "other");
-
             CheckAddress(packet, "Icmp");
 
             if (!packet.IpV4.Source.ToString().Equals("0.0.0.0") || !packet.IpV4.Destination.ToString().Equals("0.0.0.0"))
@@ -207,6 +322,8 @@ namespace Network_Bridge
                 Address addr = GetTargetAddress(packet, newDev);
 
                 IpV4Layer ipLayer = (IpV4Layer)packet.Ethernet.IpV4.ExtractLayer();
+
+                
 
                 string packetType = "REQUEST";
                 try
@@ -221,7 +338,13 @@ namespace Network_Bridge
                 //IcmpEchoLayer icmpLayer = (IcmpEchoLayer)packet.Ethernet.IpV4.Icmp.ExtractLayer();
                 //Console.Write(payload.Data);
                 //Console.WriteLine("ETHER LAYER DESTINATION: " + ethLayer.Destination);
-                if (addr != null && ipLayer != null)
+
+                Console.WriteLine("ICMP MessageTYPE: " + packet.IpV4.Icmp.MessageType.ToString());
+                Console.WriteLine("ICMP TYPE: " + packet.IpV4.Icmp.GetType().ToString());
+                Console.WriteLine("ICMP CODE: " + packet.IpV4.Icmp.Code);
+                Console.WriteLine("PACKET LENGTH: " + packet.Length);
+
+                if (addr != null && ipLayer != null && packet.Length != 70)
                 {
                     Packet newPacket = BuildIcmpPacket(new MacAddress(newDev.MacAddressWithDots()), new MacAddress(addr.Mac), packet.Ethernet.IpV4.Source, packet.Ethernet.IpV4.Destination, packetType);
                     //Packet newPacket = PacketBuilder.Build(DateTime.Now, ethLayer, ipLayer, icmpLayer);
@@ -535,6 +658,7 @@ namespace Network_Bridge
                 recievers[i] = new Thread(CaptureStarter);     //creates thread
                 recievers[i].Start();                           // starts thread
                 Thread.Sleep(100);                               //thread sleeps for a while to let the just opened thread to finish it's initialisation
+
             }
         }
 

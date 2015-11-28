@@ -45,6 +45,13 @@ namespace Network_Bridge
 
         }
 
+
+        public string IpWithoutEnd() //removes end off ip address
+        {
+            int lastDot = this.ipAddress.LastIndexOf('.');
+            return this.ipAddress.Substring(0, lastDot + 1);
+        }
+
         public string MacAddressWithDots()
         {
                 string newMac = this.macAddress;

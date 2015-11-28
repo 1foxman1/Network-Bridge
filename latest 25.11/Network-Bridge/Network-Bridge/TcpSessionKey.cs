@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ConsoleApplication16
+namespace Network_Bridge
 {
     class TcpSessionKey
     {
@@ -57,6 +57,6 @@ namespace ConsoleApplication16
     }
 
 
-    
- 
+
+
 }
